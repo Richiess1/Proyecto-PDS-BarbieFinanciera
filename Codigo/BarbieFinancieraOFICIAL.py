@@ -179,12 +179,23 @@ def open_categoria_window(categoria_montos, next_window_callback):
         frame = tk.Frame(new_window, bg="#FFD1DC")
         frame.place(relx=0.5, rely=0.5, anchor="center")
 
-        # Etiqueta y campo de entrada para la categoría de gasto
+        # Etiqueta y menú desplegable para categorías predefinidas
         font_label = ('Century Gothic', 16)
-        label_categoria = tk.Label(frame, text="Nombre de la categoría:", font=font_label, bg="#FFD1DC")
+        label_categoria = tk.Label(frame, text="Seleccionar categoría:", font=font_label, bg="#FFD1DC")
         label_categoria.pack(pady=5)
-        entry_categoria = tk.Entry(frame, font=font_label)
-        entry_categoria.pack(pady=5)
+
+        # Lista de categorías predefinidas
+        categorias_predefinidas = ["Alimentación", "Transporte", "Entretenimiento", "Salud", "Educación"]
+        categoria_var = tk.StringVar(value=categorias_predefinidas[0])
+        option_menu = tk.OptionMenu(frame, categoria_var, *categorias_predefinidas)
+        option_menu.config(font=font_label, width=20)
+        option_menu.pack(pady=5)
+
+        # Campo de entrada para nueva categoría
+        label_nueva_categoria = tk.Label(frame, text="O crear nueva categoría:", font=font_label, bg="#FFD1DC")
+        label_nueva_categoria.pack(pady=5)
+        entry_nueva_categoria = tk.Entry(frame, font=font_label)
+        entry_nueva_categoria.pack(pady=5)
 
         # Etiqueta y campo de entrada para el monto del gasto
         label_monto = tk.Label(frame, text="Monto:", font=font_label, bg="#FFD1DC")
@@ -195,7 +206,8 @@ def open_categoria_window(categoria_montos, next_window_callback):
         # Función para guardar la categoría y monto en la base de datos
         def guardar_datos():
             try:
-                categoria = entry_categoria.get()
+                # Obtener la categoría seleccionada o nueva
+                categoria = entry_nueva_categoria.get() if entry_nueva_categoria.get() else categoria_var.get()
                 monto = float(entry_monto.get())
                 if monto < 0:
                     raise ValueError("El monto no puede ser negativo.")
@@ -206,7 +218,7 @@ def open_categoria_window(categoria_montos, next_window_callback):
                 conn.commit()
                 categoria_montos.append((categoria, monto))
                 messagebox.showinfo("Éxito", f"Categoría '{categoria}' con monto ${monto:.2f} guardada.")
-                entry_categoria.delete(0, tk.END)
+                entry_nueva_categoria.delete(0, tk.END)
                 entry_monto.delete(0, tk.END)
             except ValueError as e:
                 messagebox.showerror("Error", f"Entrada no válida: {e}")
@@ -218,11 +230,15 @@ def open_categoria_window(categoria_montos, next_window_callback):
         button_guardar = tk.Button(frame, text="Agregar Categoría", font=font_button, command=guardar_datos)
         button_guardar.pack(pady=20)
         button_continuar = tk.Button(frame, text="Continuar", font=font_button, command=lambda: [conn.close(), new_window.destroy(), next_window_callback()])
-        button_continuar.pack(pady=20)
-        frame.pack(expand=True)
+        button_continuar.pack(pady=20 )
 
-    except sqlite3.Error as e:
-        messagebox.showerror("Error", f"Error en la base de datos: {e}")
+        # Iniciar el bucle principal de la ventana
+        new_window.mainloop()
+    except Exception as e:
+        messagebox.showerror("Error", f"Ocurrió un error: {e}")
+    finally:
+        if conn:
+            conn.close() 
 
 def open_opciones_window(next_gastos_callback, next_detalle_callback, next_categoria_callback, next_ingreso_callback, next_mes_callback):
     """
@@ -388,6 +404,14 @@ def open_login_window(root, next_window_callback):
     # Crear un marco para centrar los widgets
     frame = tk.Frame(root, bg="#FFD1DC")
     frame.place(relx=0.5, rely=0.5, anchor="center")
+
+    # Título de la aplicación
+    title_label = tk.Label(frame, text="Barbie Financiera", font=("Century Gothic", 24, "bold"), bg="#FFD1DC")
+    title_label.pack(pady=20)
+
+    # Mensaje de bienvenida
+    welcome_label = tk.Label(frame, text="Bienvenido a tu app de finanzas", font=("Century Gothic", 16), bg="#FFD1DC")
+    welcome_label.pack(pady=10)
 
     # Etiqueta y entrada para el usuario
     label_usuario = tk.Label(frame, text="Usuario:", font=label_font, bg="#FFD1DC")
