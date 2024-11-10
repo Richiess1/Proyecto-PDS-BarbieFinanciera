@@ -157,7 +157,10 @@ def open_categoria_window(categoria_montos, next_window_callback):
 
     :param categoria_montos: Lista que almacena las categorías y montos.
     :param next_window_callback: Función de devolución de llamada que se ejecuta después de ingresar los datos.
+
     """
+
+    
     try:
         # Conectar a la base de datos y crear la tabla 'categories' si no existe
         conn = sqlite3.connect('barbi_es.db')
@@ -315,11 +318,25 @@ def open_gastos_window(total_gastos, dinero_disponible, volver_callback):
     :param dinero_disponible: Monto de dinero disponible después de los gastos.
     :param volver_callback: Función de devolución de llamada para volver a la ventana de opciones.
     """
+    if "gastos" in ventanas_abiertas and ventanas_abiertas["gastos"]:
+        messagebox.showinfo("Información", "La ventana de gastos ya está abierta.")
+        return
+
+    # Marcar que la ventana de gastos está abierta
+    ventanas_abiertas["gastos"] = True
+
     # Crear la ventana principal
-    ventana_gastos = tk.Tk()
+    ventana_gastos = tk.Toplevel()
     ventana_gastos.title("Barbie Financiera")
     ventana_gastos.state("zoomed")  # Maximizar la ventana
-    ventana_gastos.config(bg="#FFD1DC")  # Establecer el fondo rosita pálido
+    ventana_gastos.config(bg="#FFD1DC")  # Fondo rosita pálido
+
+    # Cerrar correctamente la ventana y actualizar el diccionario
+    def cerrar_ventana():
+        ventanas_abiertas["gastos"] = False
+        ventana_gastos.destroy()
+
+    ventana_gastos.protocol("WM_DELETE_WINDOW", cerrar_ventana)
 
     # Crear un marco para centrar los widgets
     frame = tk.Frame(ventana_gastos, bg="#FFD1DC")
@@ -334,47 +351,35 @@ def open_gastos_window(total_gastos, dinero_disponible, volver_callback):
 
     # Botón para volver a la ventana de opciones
     font_button = ('Century Gothic', 16)
-    boton_volver = tk.Button(frame, text="Volver", font=font_button, command=lambda: [ventana_gastos.destroy(), volver_callback()])
+    boton_volver = tk.Button(frame, text="Volver", font=font_button, command=cerrar_ventana)
     boton_volver.pack(pady=20)
     frame.pack(expand=True)
 
+
+
+
 def open_detalle_categorias_window(categoria_montos, volver_callback):
     """
-    Abre una ventana para mostrar el detalle de las categorías de gastos y el monto restante.
+    Abre una ventana para mostrar el detalle de las categorías de gastos.
 
     :param categoria_montos: Lista que contiene las categorías y montos.
     :param volver_callback: Función de devolución de llamada para volver a la ventana de opciones.
     """
     try:
-        # Conectar a la base de datos
+        # Conectar a la base de datos y obtener los detalles de las categorías
         conn = sqlite3.connect('barbi_es.db')
         cursor = conn.cursor()
-
-        # Obtener el ingreso mensual para el mes seleccionado
-        cursor.execute('''
-            SELECT income FROM monthly_income
-            WHERE month = ?
-            ORDER BY id DESC
-            LIMIT 1
-        ''', (mes_seleccionado[0],))
-        ingreso_mensual = cursor.fetchone()
-        ingreso_mensual = ingreso_mensual[0] if ingreso_mensual else 0
-
-        # Obtener los detalles de las categorías y sumar los gastos
         cursor.execute('''
             SELECT name, amount, month FROM categories
-            WHERE month = ?
-        ''', (mes_seleccionado[0],))
+            ORDER BY month
+        ''')
         rows = cursor.fetchall()
-
-        total_gastos = sum(row[1] for row in rows)  # Sumar los montos de todas las categorías
-        monto_restante = ingreso_mensual - total_gastos
 
         # Crear la ventana principal
         ventana_detalle = tk.Tk()
-        ventana_detalle.title("Detalle de Categorías")
-        ventana_detalle.state("zoomed")
-        ventana_detalle.config(bg="#FFD1DC")
+        ventana_detalle.title("Barbie Financiera")
+        ventana_detalle.state("zoomed")  # Maximizar la ventana
+        ventana_detalle.config(bg="#FFD1DC")  # Establecer el fondo rosita pálido
 
         # Crear un marco para centrar los widgets
         frame = tk.Frame(ventana_detalle, bg="#FFD1DC")
@@ -382,32 +387,24 @@ def open_detalle_categorias_window(categoria_montos, volver_callback):
 
         # Etiqueta para el título
         font_label = ('Century Gothic', 16)
-        label_titulo = tk.Label(frame, text=f"Detalle de Categorías para {mes_seleccionado[0]}", font=font_label, bg="#FFD1DC")
+        label_titulo = tk.Label(frame, text="Detalle de Categorías", font=font_label, bg="#FFD1DC")
         label_titulo.pack(pady=10)
 
         # Mostrar los detalles de las categorías
         for row in rows:
             categoria, monto, mes = row
-            label_detalle = tk.Label(frame, text=f"{categoria}: ${monto:.2f}", font=font_label, bg="#FFD1DC")
+            label_detalle = tk.Label(frame, text=f"{mes} - {categoria}: ${monto:.2f}", font=font_label, bg="#FFD1DC")
             label_detalle.pack(pady=5)
-
-        # Mostrar el total de gastos
-        label_total_gastos = tk.Label(frame, text=f"Total de Gastos: ${total_gastos:.2f}", font=font_label, bg="#FFD1DC")
-        label_total_gastos.pack(pady=10)
-
-        # Mostrar el monto restante
-        label_monto_restante = tk.Label(frame, text=f"Monto Restante: ${monto_restante:.2f}", font=font_label, bg="#FFD1DC")
-        label_monto_restante.pack(pady=10)
 
         # Botón para volver a la ventana de opciones
         font_button = ('Century Gothic', 16)
         boton_volver = tk.Button(frame, text="Volver", font=font_button, command=lambda: [ventana_detalle.destroy(), volver_callback()])
         boton_volver.pack(pady=20)
-
         frame.pack(expand=True)
 
     except sqlite3.Error as e:
         messagebox.showerror("Error", f"Error en la base de datos: {e}")
+
     finally:
         conn.close()
 
