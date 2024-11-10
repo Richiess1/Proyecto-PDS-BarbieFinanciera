@@ -238,7 +238,7 @@ def open_categoria_window(categoria_montos, next_window_callback):
         messagebox.showerror("Error", f"Ocurrió un error: {e}")
     finally:
         if conn:
-            conn.close()
+            conn.close() 
 
 def open_opciones_window(next_gastos_callback, next_detalle_callback, next_categoria_callback, next_ingreso_callback, next_mes_callback):
     """
@@ -404,6 +404,14 @@ def open_login_window(root, next_window_callback):
     # Crear un marco para centrar los widgets
     frame = tk.Frame(root, bg="#FFD1DC")
     frame.place(relx=0.5, rely=0.5, anchor="center")
+
+    # Título de la aplicación
+    title_label = tk.Label(frame, text="Barbie Financiera", font=("Century Gothic", 24, "bold"), bg="#FFD1DC")
+    title_label.pack(pady=20)
+
+    # Mensaje de bienvenida
+    welcome_label = tk.Label(frame, text="Bienvenido a tu app de finanzas", font=("Century Gothic", 16), bg="#FFD1DC")
+    welcome_label.pack(pady=10)
 
     # Etiqueta y entrada para el usuario
     label_usuario = tk.Label(frame, text="Usuario:", font=label_font, bg="#FFD1DC")
