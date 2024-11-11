@@ -270,6 +270,11 @@ def open_opciones_window(next_gastos_callback, next_detalle_callback, next_categ
                 cursor.execute('DELETE FROM selected_month')
                 conn.commit()
                 messagebox.showinfo("Éxito", "Todos los datos han sido eliminados.")
+
+                # Reiniciar las variables globales
+                ingreso_mensual[0] = 0  # Reiniciar ingreso mensual
+                categoria_montos.clear()  # Limpiar la lista de categorías
+
             except sqlite3.Error as e:
                 messagebox.showerror("Error", f"Error en la base de datos: {e}")
             finally:
