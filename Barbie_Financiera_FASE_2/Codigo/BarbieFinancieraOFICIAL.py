@@ -74,8 +74,6 @@ def open_mes_window(volver_callback):
     except sqlite3.Error as e:
         messagebox.showerror("Error", f"Error en la base de datos: {e}")
 
-    finally:
-        conn.close()
 
 def open_ingreso_window(ingreso_mensual, next_window_callback):
     """
@@ -141,7 +139,6 @@ def open_ingreso_window(ingreso_mensual, next_window_callback):
 
         # Cerrar la conexión a la base de datos al cerrar la ventana
         def on_closing():
-            conn.close()
             new_window.destroy()
         new_window.protocol("WM_DELETE_WINDOW", on_closing)
 
@@ -236,11 +233,9 @@ def open_categoria_window(categoria_montos, next_window_callback):
         new_window.mainloop()
     except Exception as e:
         messagebox.showerror("Error", f"Ocurrió un error: {e}")
-    finally:
-        if conn:
-            conn.close() 
 
-def open_opciones_window(next_gastos_callback, next_detalle_callback, next_categoria_callback, next_ingreso_callback, next_mes_callback):
+
+def open_opciones_window(next_gastos_callback, next_detalle_callback, next_categoria_callback, next_ingreso_callback, next_mes_callback, next_edit_categoria_callback):
     """
     Abre la ventana de opciones, permitiendo navegar entre diferentes funcionalidades.
 
@@ -275,6 +270,11 @@ def open_opciones_window(next_gastos_callback, next_detalle_callback, next_categ
                 cursor.execute('DELETE FROM selected_month')
                 conn.commit()
                 messagebox.showinfo("Éxito", "Todos los datos han sido eliminados.")
+
+                # Reiniciar las variables globales
+                ingreso_mensual[0] = 0  # Reiniciar ingreso mensual
+                categoria_montos.clear()  # Limpiar la lista de categorías
+
             except sqlite3.Error as e:
                 messagebox.showerror("Error", f"Error en la base de datos: {e}")
             finally:
@@ -296,6 +296,9 @@ def open_opciones_window(next_gastos_callback, next_detalle_callback, next_categ
     boton_mes = tk.Button(frame, text="Seleccionar Mes", font=font_button, command=next_mes_callback)
     boton_mes.pack(pady=20)
 
+    boton_edit_categoria = tk.Button(frame, text="Editar Categoría", font=font_button, command=next_edit_categoria_callback) 
+    boton_edit_categoria.pack(pady=20)  # Nuevo botón para editar categoría
+    
     boton_borrar = tk.Button(frame, text="Borrar Datos Actuales", font=font_button, command=borrar_datos)
     boton_borrar.pack(pady=20)
 
@@ -382,9 +385,97 @@ def open_detalle_categorias_window(categoria_montos, volver_callback):
     except sqlite3.Error as e:
         messagebox.showerror("Error", f"Error en la base de datos: {e}")
 
-    finally:
-        conn.close()
 
+def open_edit_categoria_window(next_window_callback):
+    """
+    Abre una ventana para editar categorías de gastos y guarda los datos en la base de datos.
+
+    :param next_window_callback: Función de devolución de llamada que se ejecuta después de editar los datos.
+    """
+    try:
+        # Conectar a la base de datos y obtener las categorías
+        conn = sqlite3.connect('barbi_es.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, name, amount FROM categories')
+        categorias = cursor.fetchall()
+
+        # Crear la ventana principal
+        new_window = tk.Tk()
+        new_window.title("Editar Categoría")
+        new_window.state('zoomed')
+        new_window.config(bg="#FFD1DC")
+
+        # Crear un marco para centrar los widgets
+        frame = tk.Frame(new_window, bg="#FFD1DC")
+        frame.place(relx=0.5, rely=0.5, anchor="center")
+
+        # Etiqueta y menú desplegable para seleccionar categoría
+        font_label = ('Century Gothic', 16)
+        label_categoria = tk.Label(frame, text="Seleccionar categoría a editar:", font=font_label, bg="#FFD1DC")
+        label_categoria.pack(pady=5)
+
+        # Variable para almacenar la categoría seleccionada
+        categoria_var = tk.StringVar(value=categorias[0][1] if categorias else "")
+        option_menu = tk.OptionMenu(frame, categoria_var, *[cat[1] for cat in categorias])
+        option_menu.config(font=font_label, width=20)
+        option_menu.pack(pady=5)
+
+        # Campo de entrada para el nuevo monto
+        label_monto = tk.Label(frame, text="Nuevo Monto:", font=font_label, bg="#FFD1DC")
+        label_monto.pack(pady=5)
+        entry_monto = tk.Entry(frame, font=font_label)
+        entry_monto.pack(pady=5)
+
+        # Función para cargar el monto de la categoría seleccionada
+        def cargar_monto():
+            categoria_seleccionada = categoria_var.get()
+            for cat in categorias:
+                if cat[1] == categoria_seleccionada:
+                    entry_monto.delete(0, tk.END)
+                    entry_monto.insert(0, cat[2])  # Cargar el monto actual
+
+        # Vincular la función al menú desplegable
+        categoria_var.trace("w", lambda *args: cargar_monto())
+
+        # Función para guardar los cambios
+        def guardar_cambios():
+            try:
+                categoria_seleccionada = categoria_var.get()
+                nuevo_monto = float(entry_monto.get())
+                if nuevo_monto < 0:
+                    raise ValueError("El monto no puede ser negativo.")
+
+                # Actualizar la categoría en la base de datos
+                cursor.execute('''
+                    UPDATE categories
+                    SET amount = ?
+                    WHERE name = ?
+                ''', (nuevo_monto, categoria_seleccionada))
+                conn.commit()
+                messagebox.showinfo("Éxito", f"Categoría '{categoria_seleccionada}' actualizada a ${nuevo_monto:.2f}.")
+                new_window.destroy()
+                next_window_callback()
+            except ValueError as e:
+                messagebox.showerror("Error", f"Entrada no válida: {e}")
+            except sqlite3.Error as e:
+                messagebox.showerror("Error", f"Error en la base de datos: {e}")
+
+        # Botón para guardar los cambios
+        font_button = ('Century Gothic', 12)
+        button_guardar = tk.Button(frame, text="Guardar Cambios", font=font_button, command=guardar_cambios)
+        button_guardar.pack(pady=20)
+
+        frame.pack(expand=True)
+
+        # Cerrar la conexión a la base de datos al cerrar la ventana
+        def on_closing():
+            new_window.destroy()
+        new_window.protocol("WM_DELETE_WINDOW", on_closing)
+
+    except sqlite3.Error as e:
+        messagebox.showerror("Error", f"Error en la base de datos: {e}")
+
+            
 def open_login_window(root, next_window_callback):
     """
     Abre una ventana para el inicio de sesión.
@@ -451,8 +542,15 @@ def open_new_window():
 def open_complete_form_window():
     open_categoria_window(categoria_montos, open_opciones_window_callback)
 
-def open_opciones_window_callback():
-    open_opciones_window(open_gastos_window_callback, open_detalle_categorias_window_callback, open_complete_form_window, open_new_window, open_mes_window_callback)
+def open_opciones_window_callback(): 
+    open_opciones_window(
+        open_gastos_window_callback, 
+        open_detalle_categorias_window_callback, 
+        open_complete_form_window, 
+        open_new_window, 
+        open_mes_window_callback, 
+        open_edit_categoria_window_callback  # Ahora está definido
+    )
 
 def open_gastos_window_callback():
     total_gastos = sum(monto for _, monto in categoria_montos)
@@ -461,6 +559,9 @@ def open_gastos_window_callback():
 
 def open_detalle_categorias_window_callback():
     open_detalle_categorias_window(categoria_montos, open_opciones_window_callback)
+
+def open_edit_categoria_window_callback():
+    open_edit_categoria_window(open_opciones_window_callback)
 
 # Iniciar la aplicación
 root = tk.Tk()
